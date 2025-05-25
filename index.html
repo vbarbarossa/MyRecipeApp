@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recipe Keeper Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Tailwind gray-100 */
+        }
+        .page { display: none; }
+        .page.active { display: block; }
+        nav button.active { background-color: #4f46e5; /* Tailwind indigo-600 */ color: white; }
+        nav button:not(.active):hover { background-color: #6366f1; /* Tailwind indigo-500 */ color: white; }
+        .modal-backdrop {
+            position: fixed; inset: 0; background-color: rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 50;
+        }
+        .modal-content {
+            background-color: white; padding: 2rem; border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            width: 90%; max-width: 500px;
+        }
+        /* Custom scrollbar for recipe lists etc. */
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        /* Ensure inputs are consistently styled */
+        input[type="text"], input[type="number"], input[type="email"], input[type="password"], textarea, select {
+            @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm;
+        }
+        label {
+            @apply block text-sm font-medium text-gray-700 mb-1;
+        }
+        .dynamic-field-group {
+            @apply flex items-start space-x-2 mb-2; 
+        }
+        .dynamic-field-group .main-ingredient-inputs { @apply flex flex-grow items-center space-x-2; }
+        .dynamic-field-group .main-ingredient-inputs input, 
+        .dynamic-field-group .main-ingredient-inputs select { @apply flex-grow; }
+
+        .ingredient-nutrition-grid {
+            @apply grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-3 gap-y-2 mt-2 p-2 border border-gray-200 rounded-md bg-gray-50;
+        }
+        .ingredient-nutrition-grid label { @apply text-xs font-normal text-gray-500; }
+        .ingredient-nutrition-grid input { @apply text-xs p-1; }
+
+
+         /* Message Bar Styling */
+        #messageBar {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 1000;
+            display: none; /* Hidden by default */
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        #messageBar.success { background-color: #28a745; /* Green */ }
+        #messageBar.error { background-color: #dc3545; /* Red */ }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div id="appLoader" class="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
+        <div class="text-center">
+            <svg class="animate-spin h-12 w-12 text-indigo-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="mt-2 text-lg font-semibold text-indigo-600">Loading Recipe Keeper...</p>
+        </div>
+    </div>
+
+    <nav class="bg-indigo-700 shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <span class="font-bold text-xl text-white">Recipe Keeper Pro</span>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <button data-page="recipesPage" class="nav-button px-3 py-2 rounded-md text-sm font-medium text-indigo-200 hover:text-white hover:bg-indigo-600">Recipes</button>
+                        <button data-page="createRecipePage" class="nav-button px-3 py-2 rounded-md text-sm font-medium text-indigo-200 hover:text-white hover:bg-indigo-600">Create New</button>
+                        <button data-page="weekMenuPage" class="nav-button px-3 py-2 rounded-md text-sm font-medium text-indigo-200 hover:text-white hover:bg-indigo-600">Week Menu</button>
+                        <button data-page="groceriesPage" class="nav-button px-3 py-2 rounded-md text-sm font-medium text-indigo-200 hover:text-white hover:bg-indigo-600">Groceries</button>
+                    </div>
+                </div>
+                <div class="hidden md:block">
+                     <p id="userIdDisplay" class="text-xs text-indigo-300"></p>
+                </div>
+                <div class="-mr-2 flex md:hidden">
+                    <button type="button" id="mobileMenuButton" class="bg-indigo-700 inline-flex items-center justify-center p-2 rounded-md text-indigo-200 hover:text-white hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-indigo-700 focus:ring-white" aria-controls="mobile-menu" aria-expanded="false">
+                        <span class="sr-only">Open main menu</span>
+                        <svg class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                        <svg class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="md:hidden" id="mobile-menu" style="display: none;">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <button data-page="recipesPage" class="nav-button mobile-nav-button block px-3 py-2 rounded-md text-base font-medium text-indigo-200 hover:text-white hover:bg-indigo-600 w-full text-left">Recipes</button>
+                <button data-page="createRecipePage" class="nav-button mobile-nav-button block px-3 py-2 rounded-md text-base font-medium text-indigo-200 hover:text-white hover:bg-indigo-600 w-full text-left">Create New</button>
+                <button data-page="weekMenuPage" class="nav-button mobile-nav-button block px-3 py-2 rounded-md text-base font-medium text-indigo-200 hover:text-white hover:bg-indigo-600 w-full text-left">Week Menu</button>
+                <button data-page="groceriesPage" class="nav-button mobile-nav-button block px-3 py-2 rounded-md text-base font-medium text-indigo-200 hover:text-white hover:bg-indigo-600 w-full text-left">Groceries</button>
+            </div>
+             <div class="pt-2 pb-3 border-t border-indigo-600">
+                <p id="mobileUserIdDisplay" class="px-3 text-xs text-indigo-300"></p>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div id="recipesPage" class="page p-4 space-y-6">
+            <h2 class="text-3xl font-bold text-gray-900">My Recipes</h2>
+            <div id="recipeListContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 custom-scrollbar">
+                </div>
+        </div>
+
+        <div id="createRecipePage" class="page p-4">
+            <h2 class="text-3xl font-bold text-gray-900 mb-6">Create New Recipe</h2>
+            <form id="createRecipeForm" class="space-y-6 bg-white p-6 rounded-lg shadow">
+                <div>
+                    <label for="recipeName">Recipe Name:</label>
+                    <input type="text" id="recipeName" required>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="recipeDefaultServings">Default Servings for Recipe:</label>
+                        <input type="number" id="recipeDefaultServings" value="1" min="1" required>
+                    </div>
+                    <div>
+                        <label for="recipePersonalScore">Personal Score (1-10, optional):</label>
+                        <input type="number" id="recipePersonalScore" min="1" max="10" step="1">
+                    </div>
+                </div>
+
+                <div class="border-t pt-4">
+                    <h3 class="text-xl font-semibold mb-1">Ingredients</h3>
+                    <div id="ingredientsContainer" class="space-y-4">
+                        </div>
+                    <button type="button" id="addIngredientBtn" class="mt-2 text-sm bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md shadow">Add Ingredient</button>
+                </div>
+
+                <div class="border-t pt-4">
+                    <h3 class="text-xl font-semibold mb-2">Procedure</h3>
+                    <div id="procedureStepsContainer" class="space-y-2">
+                        </div>
+                    <button type="button" id="addProcedureStepBtn" class="mt-2 text-sm bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md shadow">Add Step</button>
+                </div>
+
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-md shadow focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Save Recipe</button>
+            </form>
+        </div>
+
+        <div id="weekMenuPage" class="page p-4 space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-center mb-6">
+                <h2 class="text-3xl font-bold text-gray-900">Week Menu</h2>
+                <div class="mt-4 sm:mt-0">
+                    <label for="numDays" class="mr-2">Number of Days:</label>
+                    <select id="numDays" class="p-2 border rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="1">1</option> <option value="2">2</option> <option value="3">3</option>
+                        <option value="4">4</option> <option value="5" selected>5</option> <option value="6">6</option>
+                        <option value="7">7</option>
+                    </select>
+                </div>
+            </div>
+            <div id="weekMenuDaysContainer" class="space-y-8">
+                </div>
+             <button id="generateGroceriesFromMenuBtn" class="mt-6 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-md shadow focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">Update & View Groceries List</button>
+        </div>
+
+        <div id="groceriesPage" class="page p-4">
+            <h2 class="text-3xl font-bold text-gray-900 mb-6">Groceries List</h2>
+            <div id="groceriesListContainer" class="bg-white p-6 rounded-lg shadow">
+                </div>
+        </div>
+    </main>
+
+    <div id="messageBar"></div>
+
+    <div id="confirmationModal" class="modal-backdrop" style="display: none;">
+        <div class="modal-content">
+            <h3 id="modalTitle" class="text-lg font-medium leading-6 text-gray-900 mb-2">Confirmation</h3>
+            <p id="modalMessage" class="text-sm text-gray-500 mb-4">Are you sure?</p>
+            <div class="flex justify-end space-x-3">
+                <button id="modalCancelBtn" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Cancel</button>
+                <button id="modalConfirmBtn" class="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Firebase SDK imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, addDoc, deleteDoc, onSnapshot, collection, query, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- CONFIGURATION ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-recipe-app';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+
+        if (!firebaseConfig) {
+            console.error("Firebase configuration is missing!");
+            document.getElementById('appLoader').innerHTML = '<p class="text-red-500 text-center p-4">Error: Firebase configuration missing. App cannot load.</p>';
+        }
+        
+        setLogLevel('debug'); 
+
+        // --- FIREBASE INITIALIZATION ---
+        let app;
+        let db;
+        let auth;
+        let userId = null;
+        let isAuthReady = false;
+
+        try {
+            if (firebaseConfig) { 
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+            } else {
+                throw new Error("Firebase config is null, cannot initialize.");
+            }
+        } catch (error) {
+            console.error("Error initializing Firebase:", error);
+            document.getElementById('appLoader').innerHTML = '<p class="text-red-500 text-center p-4">Error initializing Firebase. Please check console.</p>';
+        }
+        
+        // --- GLOBAL STATE ---
+        let recipes = []; 
+        let weekMenu = { numDays: 5, days: {} }; 
+        const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+        const mealTypes = ["breakfast", "lunch", "dinner"];
+        const metricUnits = ["g", "kg", "ml", "l"]; 
+
+        // --- COLLECTIONS ---
+        const RECIPES_COLLECTION = `/artifacts/${appId}/public/data/recipes`;
+        const WEEK_MENU_DOC = `/artifacts/${appId}/public/data/weekMenus/mainSharedMenu`; 
+
+        // --- AUTHENTICATION ---
+        if (auth) { 
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                    console.log("User is signed in with UID:", userId);
+                } else {
+                    console.log("User is signed out, attempting anonymous sign-in.");
+                    try {
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                             await signInWithCustomToken(auth, __initial_auth_token);
+                             console.log("Signed in with custom token.");
+                        } else {
+                            await signInAnonymously(auth);
+                            console.log("Signed in anonymously.");
+                        }
+                    } catch (error) {
+                        console.error("Error signing in:", error);
+                        showMessage("Error signing in. Some features might not work.", "error");
+                    }
+                }
+                isAuthReady = true;
+                document.getElementById('userIdDisplay').textContent = `User: ${userId ? userId.substring(0,8)+'...' : 'Loading...'}`;
+                document.getElementById('mobileUserIdDisplay').textContent = `User: ${userId ? userId.substring(0,8)+'...' : 'Loading...'}`;
+                
+                initializeAppState(); 
+            });
+        } else {
+            isAuthReady = true; 
+            initializeAppState(); 
+        }
+
+        async function initializeAppState() {
+            if (!isAuthReady) { 
+                console.log("Auth not ready or Firebase init failed, deferring app initialization further.");
+                return; 
+            }
+
+            if (!db || !auth) { 
+                console.warn("Firebase DB or Auth not initialized. App functionality will be limited.");
+                 document.getElementById('appLoader').style.display = 'none'; 
+                 showPage('recipesPage'); 
+                if (!document.getElementById('firebaseCriticalError')) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.id = 'firebaseCriticalError';
+                    errorDiv.className = 'p-4 bg-red-100 border border-red-400 text-red-700 rounded mb-4';
+                    errorDiv.textContent = 'Critical error: Could not connect to database services. Data cannot be saved or loaded.';
+                    document.querySelector('main').prepend(errorDiv);
+                }
+                return;
+            }
+
+            console.log("Auth ready, initializing app state.");
+            await loadRecipes();
+            await loadWeekMenu();
+            
+            setupNumDaysListener();
+            renderWeekMenuUI(); 
+            
+            document.getElementById('appLoader').style.display = 'none'; 
+            showPage('recipesPage'); 
+        }
+
+        // --- NAVIGATION ---
+        const navButtons = document.querySelectorAll('.nav-button');
+        const pages = document.querySelectorAll('.page');
+        const mobileMenuButton = document.getElementById('mobileMenuButton');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        navButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const pageId = button.dataset.page;
+                showPage(pageId);
+                if (mobileMenu.style.display === 'block') { 
+                    mobileMenu.style.display = 'none';
+                    mobileMenuButton.querySelector('svg.block').style.display = 'block';
+                    mobileMenuButton.querySelector('svg.hidden').style.display = 'none';
+                    mobileMenuButton.setAttribute('aria-expanded', 'false');
+                }
+            });
+        });
+        
+        mobileMenuButton.addEventListener('click', () => {
+            const isExpanded = mobileMenuButton.getAttribute('aria-expanded') === 'true' || false;
+            mobileMenuButton.setAttribute('aria-expanded', !isExpanded);
+            mobileMenu.style.display = isExpanded ? 'none' : 'block';
+            mobileMenuButton.querySelector('svg.block').style.display = isExpanded ? 'block' : 'none';
+            mobileMenuButton.querySelector('svg.hidden').style.display = isExpanded ? 'none' : 'block';
+        });
+
+        function showPage(pageId) {
+            pages.forEach(page => page.classList.remove('active'));
+            const activePage = document.getElementById(pageId);
+            if (activePage) activePage.classList.add('active');
+
+            navButtons.forEach(btn => {
+                btn.classList.remove('active', 'bg-indigo-600', 'text-white');
+                btn.classList.add('text-indigo-200', 'hover:text-white', 'hover:bg-indigo-600');
+                if (btn.dataset.page === pageId) {
+                    btn.classList.add('active', 'bg-indigo-600', 'text-white');
+                    btn.classList.remove('text-indigo-200');
+                }
+            });
+            if (pageId === 'recipesPage') renderRecipeList();
+            if (pageId === 'createRecipePage') { 
+                const ingredientsContainer = document.getElementById('ingredientsContainer');
+                const procedureStepsContainer = document.getElementById('procedureStepsContainer');
+                // Clear existing fields before adding new ones to prevent duplication on page switch
+                if(ingredientsContainer) ingredientsContainer.innerHTML = '';
+                if(procedureStepsContainer) procedureStepsContainer.innerHTML = '';
+                addIngredientField(); 
+                addProcedureStepField(); 
+            }
+            if (pageId === 'weekMenuPage') renderWeekMenuUI(); 
+            if (pageId === 'groceriesPage') renderGroceriesList();
+        }
+        
+        // --- MESSAGE BAR & MODAL ---
+        const messageBar = document.getElementById('messageBar');
+        let messageTimeout;
+
+        function showMessage(text, type = 'info', duration = 3000) {
+            messageBar.textContent = text;
+            messageBar.className = 'fixed bottom-5 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-md shadow-lg text-white z-50'; 
+            if (type === 'success') messageBar.classList.add('bg-green-500');
+            else if (type === 'error') messageBar.classList.add('bg-red-500');
+            else messageBar.classList.add('bg-blue-500'); 
+            
+            messageBar.style.display = 'block';
+
+            clearTimeout(messageTimeout);
+            messageTimeout = setTimeout(() => {
+                messageBar.style.display = 'none';
+            }, duration);
+        }
+
+        const confirmationModal = document.getElementById('confirmationModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalConfirmBtn = document.getElementById('modalConfirmBtn');
+        const modalCancelBtn = document.getElementById('modalCancelBtn');
+        let confirmCallback = null;
+
+        function showConfirmationModal(title, message, onConfirm) {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            confirmCallback = onConfirm;
+            confirmationModal.style.display = 'flex';
+        }
+
+        modalConfirmBtn.addEventListener('click', () => {
+            if (confirmCallback) confirmCallback();
+            confirmationModal.style.display = 'none';
+        });
+        modalCancelBtn.addEventListener('click', () => {
+            confirmationModal.style.display = 'none';
+        });
+
+        // --- RECIPE CALCULATIONS ---
+        function convertToGramsOrMl(quantity, unit) {
+            const qty = parseFloat(quantity) || 0;
+            const u = unit.toLowerCase();
+            if (u === 'kg' || u === 'l') {
+                return qty * 1000;
+            }
+            return qty; // Assuming g or ml
+        }
+
+        function calculateRecipeNutritionPerServing(recipe) {
+            const totals = { calories: 0, fat: 0, protein: 0, saturatedFat: 0, carbs: 0, sugars: 0, salt: 0 };
+            if (!recipe.ingredients || recipe.ingredients.length === 0 || !recipe.defaultServings || recipe.defaultServings <= 0) {
+                return totals;
+            }
+
+            recipe.ingredients.forEach(ing => {
+                const ingredientQuantityInRecipe = convertToGramsOrMl(ing.quantity, ing.unit);
+                // Nutrition values (ing.calories, ing.fat etc.) are per 100g/ml
+                totals.calories += (parseFloat(ing.calories) / 100) * ingredientQuantityInRecipe || 0;
+                totals.fat += (parseFloat(ing.fat) / 100) * ingredientQuantityInRecipe || 0;
+                totals.protein += (parseFloat(ing.protein) / 100) * ingredientQuantityInRecipe || 0;
+                totals.saturatedFat += (parseFloat(ing.saturatedFat) / 100) * ingredientQuantityInRecipe || 0;
+                totals.carbs += (parseFloat(ing.carbs) / 100) * ingredientQuantityInRecipe || 0;
+                totals.sugars += (parseFloat(ing.sugars) / 100) * ingredientQuantityInRecipe || 0;
+                totals.salt += (parseFloat(ing.salt) / 100) * ingredientQuantityInRecipe || 0;
+            });
+
+            for (const key in totals) {
+                totals[key] = totals[key] / recipe.defaultServings;
+            }
+            return totals;
+        }
+
+
+        // --- RECIPES PAGE ---
+        async function loadRecipes() {
+            if (!isAuthReady || !db) {
+                console.warn("Cannot load recipes: Auth not ready or DB not initialized.");
+                renderRecipeList(); 
+                return;
+            }
+            const recipesCol = collection(db, RECIPES_COLLECTION);
+            onSnapshot(query(recipesCol), (snapshot) => {
+                recipes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                console.log("Recipes loaded/updated:", recipes);
+                renderRecipeList();
+                if (document.getElementById('weekMenuPage')?.classList.contains('active')) {
+                     renderWeekMenuUI(); 
+                }
+            }, (error) => {
+                console.error("Error loading recipes: ", error);
+                showMessage("Error loading recipes.", "error");
+                recipes = []; 
+                renderRecipeList(); 
+            });
+        }
+
+        function renderRecipeList() {
+            const container = document.getElementById('recipeListContainer');
+            if (!container) return;
+            container.innerHTML = '';
+            if (!db && recipes.length === 0) { 
+                 container.innerHTML = '<p class="col-span-full text-center text-red-500 py-8">Database not available. Cannot load recipes.</p>';
+                 return;
+            }
+            if (recipes.length === 0) {
+                container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">No recipes yet. Go to "Create New" to add some!</p>';
+                return;
+            }
+            recipes.forEach(recipe => {
+                const div = document.createElement('div');
+                div.className = 'bg-white shadow-lg rounded-lg p-6 hover:shadow-xl transition-shadow duration-300';
+                
+                const nutrition = calculateRecipeNutritionPerServing(recipe); // Uses the updated calculation
+
+                const ingredientsList = (recipe.ingredients && recipe.ingredients.length > 0)
+                    ? recipe.ingredients.map(ing => {
+                        let details = `${ing.name || 'Unnamed Ingredient'}: ${ing.quantity || '?'} ${ing.unit || ''}`;
+                        return `<li>${details}</li>`;
+                      }).join('')
+                    : '<li>No ingredients listed.</li>';
+                const procedureList = (recipe.procedure && recipe.procedure.length > 0)
+                    ? recipe.procedure.map(step => `<li>${step || 'No description'}</li>`).join('')
+                    : '<li>No procedure steps listed.</li>';
+
+                // Calculate total nutrition for the whole recipe (not per serving) for the details view
+                let totalRecipeNutrition = { calories: 0, fat: 0, saturatedFat: 0, carbs: 0, sugars: 0, protein: 0, salt: 0 };
+                if (recipe.ingredients && recipe.defaultServings > 0) {
+                    recipe.ingredients.forEach(ing => {
+                        const ingredientQuantityInRecipe = convertToGramsOrMl(ing.quantity, ing.unit);
+                        totalRecipeNutrition.calories += (parseFloat(ing.calories) / 100) * ingredientQuantityInRecipe || 0;
+                        totalRecipeNutrition.fat += (parseFloat(ing.fat) / 100) * ingredientQuantityInRecipe || 0;
+                        totalRecipeNutrition.saturatedFat += (parseFloat(ing.saturatedFat) / 100) * ingredientQuantityInRecipe || 0;
+                        totalRecipeNutrition.carbs += (parseFloat(ing.carbs) / 100) * ingredientQuantityInRecipe || 0;
+                        totalRecipeNutrition.sugars += (parseFloat(ing.sugars) / 100) * ingredientQuantityInRecipe || 0;
+                        totalRecipeNutrition.protein += (parseFloat(ing.protein) / 100) * ingredientQuantityInRecipe || 0;
+                        totalRecipeNutrition.salt += (parseFloat(ing.salt) / 100) * ingredientQuantityInRecipe || 0;
+                    });
+                }
+
+
+                div.innerHTML = `
+                    <h3 class="text-xl font-semibold text-indigo-700 mb-2">${recipe.name || 'Unnamed Recipe'}</h3>
+                    <p class="text-sm text-gray-600"><strong>Serves:</strong> ${recipe.defaultServings || 'N/A'}</p>
+                    <p class="text-sm text-gray-600"><strong>Calories:</strong> ${nutrition.calories.toFixed(0)} kcal/serving</p>
+                    <p class="text-sm text-gray-600"><strong>Fat:</strong> ${nutrition.fat.toFixed(1)} g/serving (Sat: ${nutrition.saturatedFat.toFixed(1)}g)</p>
+                    <p class="text-sm text-gray-600"><strong>Carbs:</strong> ${nutrition.carbs.toFixed(1)} g/serving (Sugars: ${nutrition.sugars.toFixed(1)}g)</p>
+                    <p class="text-sm text-gray-600"><strong>Protein:</strong> ${nutrition.protein.toFixed(1)} g/serving</p>
+                    <p class="text-sm text-gray-600"><strong>Salt:</strong> ${nutrition.salt.toFixed(2)} g/serving</p>
+                    ${recipe.personalScore ? `<p class="text-sm text-gray-600"><strong>Personal Score:</strong> ${recipe.personalScore}/10</p>` : ''}
+                    
+                    <details class="mt-3 text-sm">
+                        <summary class="font-medium text-indigo-600 cursor-pointer">Ingredients & Full Recipe Nutrition</summary>
+                        <ul class="list-disc list-inside mt-1 text-gray-700">
+                            ${ingredientsList}
+                        </ul>
+                         <div class="mt-2 text-xs border-t pt-2">
+                            <h4 class="font-semibold">Totals for entire recipe (makes ${recipe.defaultServings || 'N/A'} servings):</h4>
+                            <p>Total Calories: ${totalRecipeNutrition.calories.toFixed(0)} kcal</p>
+                            <p>Total Fat: ${totalRecipeNutrition.fat.toFixed(1)}g (Saturated: ${totalRecipeNutrition.saturatedFat.toFixed(1)}g)</p>
+                            <p>Total Carbs: ${totalRecipeNutrition.carbs.toFixed(1)}g (Sugars: ${totalRecipeNutrition.sugars.toFixed(1)}g)</p>
+                            <p>Total Protein: ${totalRecipeNutrition.protein.toFixed(1)}g</p>
+                            <p>Total Salt: ${totalRecipeNutrition.salt.toFixed(2)}g</p>
+                        </div>
+                    </details>
+                    <details class="mt-2 text-sm">
+                        <summary class="font-medium text-indigo-600 cursor-pointer">Procedure</summary>
+                        <ol class="list-decimal list-inside mt-1 text-gray-700 space-y-1">
+                            ${procedureList}
+                        </ol>
+                    </details>
+                    <button data-id="${recipe.id}" class="delete-recipe-btn mt-4 text-sm bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-3 rounded-md shadow">Delete</button>
+                `;
+                container.appendChild(div);
+            });
+
+            document.querySelectorAll('.delete-recipe-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const recipeId = e.target.dataset.id;
+                    const recipeToDelete = recipes.find(r => r.id === recipeId);
+                    if (recipeToDelete) {
+                        showConfirmationModal(
+                            'Delete Recipe', 
+                            `Are you sure you want to delete "${recipeToDelete.name}"? This may affect your week menu.`, 
+                            () => deleteRecipe(recipeId)
+                        );
+                    }
+                });
+            });
+        }
+
+        async function deleteRecipe(recipeId) {
+            if (!db) {
+                 showMessage("Database not available. Cannot delete recipe.", "error");
+                 return;
+            }
+            try {
+                await deleteDoc(doc(db, RECIPES_COLLECTION, recipeId));
+                showMessage("Recipe deleted successfully.", "success");
+            } catch (error) {
+                console.error("Error deleting recipe: ", error);
+                showMessage("Error deleting recipe.", "error");
+            }
+        }
+
+        // --- CREATE NEW RECIPE PAGE ---
+        const createRecipeForm = document.getElementById('createRecipeForm');
+        const ingredientsContainer = document.getElementById('ingredientsContainer');
+        const procedureStepsContainer = document.getElementById('procedureStepsContainer');
+
+        document.getElementById('addIngredientBtn').addEventListener('click', () => addIngredientField()); 
+        document.getElementById('addProcedureStepBtn').addEventListener('click', () => addProcedureStepField()); 
+
+        function addIngredientField(ingredient = { 
+            name: '', quantity: '', unit: 'g', 
+            calories: '', fat: '', saturatedFat: '', carbs: '', sugars: '', protein: '', salt: '' 
+        }) {
+            const div = document.createElement('div');
+            div.className = 'dynamic-field-group flex-col items-stretch border p-3 rounded-md bg-white'; 
+            
+            const unitOptions = metricUnits.map(u => `<option value="${u}" ${ingredient.unit === u ? 'selected' : ''}>${u}</option>`).join('');
+
+            div.innerHTML = `
+                <div class="main-ingredient-inputs w-full mb-3">
+                    <input type="text" name="ingredientName" placeholder="Ingredient Name" value="${ingredient.name}" class="flex-grow" required>
+                    <input type="number" name="ingredientQuantity" placeholder="Qty" value="${ingredient.quantity}" step="any" class="w-24" required>
+                    <select name="ingredientUnit" class="w-28" required>
+                        ${unitOptions}
+                    </select>
+                    <button type="button" class="remove-field-btn text-red-500 hover:text-red-700 font-semibold p-1 rounded-full focus:outline-none self-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 000 2h6a1 1 0 100-2H7z" clip-rule="evenodd" /></svg>
+                    </button>
+                </div>
+                <div><p class="text-sm font-medium text-gray-600 mb-1">Nutritional Values (per 100g or 100ml of this ingredient):</p></div>
+                <div class="ingredient-nutrition-grid w-full">
+                    <div><label>Calories (kcal):</label><input type="number" name="ingCalories" value="${ingredient.calories}" placeholder="kcal" step="any"></div>
+                    <div><label>Fat (g):</label><input type="number" name="ingFat" value="${ingredient.fat}" placeholder="g" step="any"></div>
+                    <div><label>Saturated Fat (g):</label><input type="number" name="ingSaturatedFat" value="${ingredient.saturatedFat}" placeholder="g" step="any"></div>
+                    <div><label>Carbs (g):</label><input type="number" name="ingCarbs" value="${ingredient.carbs}" placeholder="g" step="any"></div>
+                    <div><label>Sugars (g):</label><input type="number" name="ingSugars" value="${ingredient.sugars}" placeholder="g" step="any"></div>
+                    <div><label>Protein (g):</label><input type="number" name="ingProtein" value="${ingredient.protein}" placeholder="g" step="any"></div>
+                    <div><label>Salt (g):</label><input type="number" name="ingSalt" value="${ingredient.salt}" placeholder="g" step="any"></div>
+                </div>
+            `;
+            ingredientsContainer.appendChild(div);
+            div.querySelector('.remove-field-btn').addEventListener('click', () => div.remove());
+        }
+
+        function addProcedureStepField(stepText = '') {
+            const div = document.createElement('div');
+            div.className = 'dynamic-field-group';
+            div.innerHTML = `
+                <textarea name="procedureStep" placeholder="Describe step..." rows="2" class="flex-grow" required>${stepText}</textarea>
+                <button type="button" class="remove-field-btn text-red-500 hover:text-red-700 font-semibold p-1 rounded-full focus:outline-none self-start mt-1">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 000 2h6a1 1 0 100-2H7z" clip-rule="evenodd" /></svg>
+                </button>
+            `;
+            procedureStepsContainer.appendChild(div);
+            div.querySelector('.remove-field-btn').addEventListener('click', () => div.remove());
+        }
+        
+        // Initial fields are added when 'createRecipePage' is shown (see showPage function)
+
+        createRecipeForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            if (!db || !userId) {
+                showMessage("Not authenticated or database not available. Cannot save recipe.", "error");
+                return;
+            }
+
+            const newRecipe = {
+                name: document.getElementById('recipeName').value.trim(),
+                defaultServings: parseInt(document.getElementById('recipeDefaultServings').value),
+                personalScore: document.getElementById('recipePersonalScore').value ? parseInt(document.getElementById('recipePersonalScore').value) : null,
+                ingredients: [],
+                procedure: [],
+                createdBy: userId,
+                createdAt: serverTimestamp() 
+            };
+
+            ingredientsContainer.querySelectorAll('.dynamic-field-group').forEach(field => {
+                const ingredientData = {
+                    name: field.querySelector('input[name="ingredientName"]').value.trim(),
+                    quantity: parseFloat(field.querySelector('input[name="ingredientQuantity"]').value),
+                    unit: field.querySelector('select[name="ingredientUnit"]').value,
+                    calories: field.querySelector('input[name="ingCalories"]').value ? parseFloat(field.querySelector('input[name="ingCalories"]').value) : 0,
+                    fat: field.querySelector('input[name="ingFat"]').value ? parseFloat(field.querySelector('input[name="ingFat"]').value) : 0,
+                    saturatedFat: field.querySelector('input[name="ingSaturatedFat"]').value ? parseFloat(field.querySelector('input[name="ingSaturatedFat"]').value) : 0,
+                    carbs: field.querySelector('input[name="ingCarbs"]').value ? parseFloat(field.querySelector('input[name="ingCarbs"]').value) : 0,
+                    sugars: field.querySelector('input[name="ingSugars"]').value ? parseFloat(field.querySelector('input[name="ingSugars"]').value) : 0,
+                    protein: field.querySelector('input[name="ingProtein"]').value ? parseFloat(field.querySelector('input[name="ingProtein"]').value) : 0,
+                    salt: field.querySelector('input[name="ingSalt"]').value ? parseFloat(field.querySelector('input[name="ingSalt"]').value) : 0,
+                };
+                if (ingredientData.name && !isNaN(ingredientData.quantity) && ingredientData.unit) {
+                    newRecipe.ingredients.push(ingredientData);
+                }
+            });
+
+            procedureStepsContainer.querySelectorAll('.dynamic-field-group').forEach(field => {
+                const step = field.querySelector('textarea[name="procedureStep"]').value.trim();
+                if (step) {
+                    newRecipe.procedure.push(step);
+                }
+            });
+            
+            if (newRecipe.ingredients.length === 0) {
+                showMessage("Please add at least one ingredient.", "error"); return;
+            }
+            if (newRecipe.procedure.length === 0) {
+                showMessage("Please add at least one procedure step.", "error"); return;
+            }
+
+            try {
+                await addDoc(collection(db, RECIPES_COLLECTION), newRecipe);
+                showMessage(`Recipe "${newRecipe.name}" saved successfully!`, "success");
+                createRecipeForm.reset();
+                ingredientsContainer.innerHTML = ''; 
+                procedureStepsContainer.innerHTML = '';
+                addIngredientField(); 
+                addProcedureStepField(); 
+                showPage('recipesPage');
+            } catch (error) {
+                console.error("Error saving recipe: ", error);
+                showMessage("Error saving recipe. Check console for details.", "error");
+            }
+        });
+
+        // --- WEEK MENU PAGE ---
+        const numDaysSelect = document.getElementById('numDays');
+        const weekMenuDaysContainer = document.getElementById('weekMenuDaysContainer');
+
+        function setupNumDaysListener() {
+            if(numDaysSelect) {
+                numDaysSelect.addEventListener('change', () => {
+                    weekMenu.numDays = parseInt(numDaysSelect.value);
+                    renderWeekMenuUI();
+                    saveWeekMenu(); 
+                });
+            }
+        }
+
+        async function loadWeekMenu() {
+            if (!isAuthReady || !db) {
+                 console.warn("Cannot load week menu: Auth not ready or DB not initialized.");
+                 renderWeekMenuUI(); 
+                 return;
+            }
+            const menuDocRef = doc(db, WEEK_MENU_DOC);
+            onSnapshot(menuDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    weekMenu = { numDays: data.numDays || 5, days: data.days || {} };
+                    console.log("Week menu loaded/updated:", weekMenu);
+                } else {
+                    console.log("No week menu found, using default.");
+                    weekMenu = { numDays: 5, days: {} }; 
+                    saveWeekMenu(); 
+                }
+                if(numDaysSelect) numDaysSelect.value = weekMenu.numDays; 
+                renderWeekMenuUI();
+            }, (error) => {
+                console.error("Error loading week menu: ", error);
+                showMessage("Error loading week menu.", "error");
+                weekMenu = { numDays: 5, days: {} }; 
+                renderWeekMenuUI(); 
+            });
+        }
+        
+        function renderWeekMenuUI() {
+            if (!weekMenuDaysContainer) return;
+            
+            if (!db && recipes.length === 0 && Object.keys(weekMenu.days).length === 0) {
+                weekMenuDaysContainer.innerHTML = `<p class="text-center text-red-500 py-4">Database not available. Cannot load week menu.</p>`;
+                return;
+            }
+             if (recipes.length === 0 && Object.keys(weekMenu.days).length === 0) {
+                weekMenuDaysContainer.innerHTML = `<p class="text-center text-gray-500 py-4">Add some recipes first to plan your week!</p>`;
+                return;
+             }
+            
+            weekMenuDaysContainer.innerHTML = ''; 
+
+            for (let i = 0; i < weekMenu.numDays; i++) {
+                const dayId = `day${i}`;
+                const dayData = weekMenu.days[dayId] || {};
+                let dailyTotalCalories = 0;
+
+                const dayElement = document.createElement('div');
+                dayElement.className = 'bg-white shadow rounded-lg p-6 space-y-4';
+                
+                let mealSlotsHTML = '';
+                mealTypes.forEach(meal => {
+                    const mealData = dayData[meal] || { recipeId: '', servings: 1 };
+                    const selectedRecipe = recipes.find(r => r.id === mealData.recipeId);
+                    let mealCalories = 0;
+                    if (selectedRecipe && mealData.servings > 0) {
+                        const recipeNutritionPerServing = calculateRecipeNutritionPerServing(selectedRecipe);
+                        mealCalories = recipeNutritionPerServing.calories * mealData.servings;
+                        dailyTotalCalories += mealCalories;
+                    }
+
+                    mealSlotsHTML += `
+                        <div class="meal-slot border-t pt-3 mt-3 first:mt-0 first:border-t-0">
+                            <label for="${dayId}_${meal}_recipe" class="block text-sm font-medium text-gray-700">${meal.charAt(0).toUpperCase() + meal.slice(1)} (${mealCalories.toFixed(0)} kcal)</label>
+                            <div class="flex space-x-2 mt-1">
+                                <select id="${dayId}_${meal}_recipe" data-day="${i}" data-meal="${meal}" class="recipe-select mt-1 block w-2/3">
+                                    <option value="">-- Select Recipe --</option>
+                                    ${recipes.map(r => `<option value="${r.id}" ${r.id === mealData.recipeId ? 'selected' : ''}>${r.name || 'Unnamed Recipe'}</option>`).join('')}
+                                </select>
+                                <input type="number" id="${dayId}_${meal}_servings" data-day="${i}" data-meal="${meal}" value="${mealData.servings || 1}" min="1" class="servings-input mt-1 block w-1/3" placeholder="Servings">
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                dayElement.innerHTML = `
+                    <h3 class="text-xl font-semibold text-indigo-700">${dayNames[i]} 
+                        <span id="${dayId}_total_calories" class="text-base font-normal text-gray-600">(Total: ${dailyTotalCalories.toFixed(0)} kcal)</span>
+                    </h3>
+                    ${mealSlotsHTML}
+                `;
+                weekMenuDaysContainer.appendChild(dayElement);
+            }
+            
+            weekMenuDaysContainer.querySelectorAll('.recipe-select, .servings-input').forEach(input => {
+                input.addEventListener('change', handleMenuChange);
+            });
+        }
+
+        function handleMenuChange(event) {
+            const target = event.target;
+            const dayIndex = parseInt(target.dataset.day);
+            const mealType = target.dataset.meal;
+            const dayId = `day${dayIndex}`;
+
+            if (!weekMenu.days[dayId]) weekMenu.days[dayId] = {};
+            if (!weekMenu.days[dayId][mealType]) weekMenu.days[dayId][mealType] = { recipeId: '', servings: 1 };
+
+            if (target.classList.contains('recipe-select')) {
+                weekMenu.days[dayId][mealType].recipeId = target.value;
+            } else if (target.classList.contains('servings-input')) {
+                weekMenu.days[dayId][mealType].servings = parseInt(target.value) || 1;
+            }
+            
+            updateDailyCaloriesDisplay(dayIndex);
+            saveWeekMenu();
+        }
+
+        function updateDailyCaloriesDisplay(dayIndex) {
+            const dayId = `day${dayIndex}`;
+            let dailyTotalCalories = 0;
+
+            mealTypes.forEach(mealType => {
+                const mealLabel = weekMenuDaysContainer.querySelector(`#${dayId}_${mealType}_recipe`)?.closest('.meal-slot')?.querySelector('label');
+                const recipeId = weekMenu.days[dayId]?.[mealType]?.recipeId;
+                const servings = weekMenu.days[dayId]?.[mealType]?.servings || 0;
+                
+                let mealCalories = 0;
+                if (recipeId && servings > 0) {
+                    const recipe = recipes.find(r => r.id === recipeId);
+                    if (recipe) {
+                        const recipeNutritionPerServing = calculateRecipeNutritionPerServing(recipe);
+                        mealCalories = recipeNutritionPerServing.calories * servings;
+                        dailyTotalCalories += mealCalories;
+                    }
+                }
+                if(mealLabel) mealLabel.textContent = `${mealType.charAt(0).toUpperCase() + mealType.slice(1)} (${mealCalories.toFixed(0)} kcal)`;
+            });
+            
+            const totalCaloriesDisplay = document.getElementById(`${dayId}_total_calories`);
+            if (totalCaloriesDisplay) {
+                totalCaloriesDisplay.textContent = `(Total: ${dailyTotalCalories.toFixed(0)} kcal)`;
+            }
+        }
+        
+        async function saveWeekMenu() {
+            if (!db || !userId) {
+                showMessage("Not authenticated or database not available. Cannot save week menu.", "error");
+                return;
+            }
+            try {
+                const prunedDays = {};
+                for (const dayKey in weekMenu.days) {
+                    const dayContent = weekMenu.days[dayKey];
+                    if (Object.values(dayContent).some(meal => meal && meal.recipeId)) { 
+                        prunedDays[dayKey] = dayContent;
+                    }
+                }
+
+                const menuDataToSave = {
+                    numDays: weekMenu.numDays,
+                    days: prunedDays, 
+                    updatedBy: userId,
+                    updatedAt: serverTimestamp()
+                };
+                await setDoc(doc(db, WEEK_MENU_DOC), menuDataToSave, { merge: true });
+                console.log("Week menu saved:", menuDataToSave);
+            } catch (error) {
+                console.error("Error saving week menu: ", error);
+                showMessage("Error saving week menu.", "error");
+            }
+        }
+
+        // --- GROCERIES PAGE ---
+        const generateGroceriesBtn = document.getElementById('generateGroceriesFromMenuBtn');
+        if (generateGroceriesBtn) {
+            generateGroceriesBtn.addEventListener('click', () => {
+                renderGroceriesList();
+                showPage('groceriesPage');
+            });
+        }
+
+        function renderGroceriesList() {
+            const container = document.getElementById('groceriesListContainer');
+            if (!container) return;
+            container.innerHTML = '';
+            
+            if (!db && Object.keys(weekMenu.days).length === 0) {
+                 container.innerHTML = '<p class="text-center text-red-500 py-4">Database not available and no menu items. Cannot generate groceries.</p>';
+                 return;
+            }
+
+            const aggregatedIngredients = {}; 
+
+            for (const dayKey in weekMenu.days) {
+                const dayData = weekMenu.days[dayKey];
+                for (const mealType in dayData) {
+                    const mealInfo = dayData[mealType];
+                    if (mealInfo && mealInfo.recipeId && mealInfo.servings > 0) {
+                        const recipe = recipes.find(r => r.id === mealInfo.recipeId);
+                        if (recipe && recipe.ingredients && recipe.defaultServings > 0) { 
+                            const scaleFactor = mealInfo.servings / recipe.defaultServings;
+                            recipe.ingredients.forEach(ing => {
+                                if (ing.name && ing.unit && typeof ing.quantity === 'number') { 
+                                    const key = `${ing.name.toLowerCase().trim()}_${ing.unit.toLowerCase().trim()}`;
+                                    const scaledQuantity = ing.quantity * scaleFactor;
+                                    if (aggregatedIngredients[key]) {
+                                        aggregatedIngredients[key].quantity += scaledQuantity;
+                                    } else {
+                                        aggregatedIngredients[key] = {
+                                            name: ing.name,
+                                            quantity: scaledQuantity,
+                                            unit: ing.unit
+                                        };
+                                    }
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+
+            if (Object.keys(aggregatedIngredients).length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 py-4">No recipes selected in the Week Menu, or selected recipes have no ingredients. Plan your week first!</p>';
+                return;
+            }
+
+            const ul = document.createElement('ul');
+            ul.className = 'list-disc list-inside space-y-2 text-gray-700';
+            for (const key in aggregatedIngredients) {
+                const item = aggregatedIngredients[key];
+                const li = document.createElement('li'); 
+                let displayQuantity = parseFloat(item.quantity.toFixed(2)); // Default to 2 decimal places
+                // For g, kg, ml, l, 2 decimal places is fine. No 'pcs' etc. anymore.
+                li.innerHTML = `<span class="font-medium">${item.name}:</span> ${displayQuantity} ${item.unit}`;
+                ul.appendChild(li);
+            }
+            container.appendChild(ul);
+        }
+    </script>
+</body>
+</html>
