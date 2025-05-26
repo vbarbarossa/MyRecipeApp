@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recipe Keeper (Flat CSV Edition)</title>
+    <title>My Recipes Scheduler</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -12,6 +12,12 @@
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
                     },
+                    colors: {
+                        'theme-dark': '#047857', // Example: emerald-700
+                        'theme-medium': '#059669', // Example: emerald-600
+                        'theme-light': '#6ee7b7', // Example: emerald-300
+                        'theme-text-on-dark': '#d1fae5', // Example: emerald-100
+                    }
                 }
             }
         }
@@ -20,20 +26,20 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6; /* Tailwind gray-100 */
+            background-color: #f3f4f6; 
         }
         .page { display: none; }
         .page.active { display: block; }
-        nav button.active { background-color: #4f46e5; /* Tailwind indigo-600 */ color: white; }
-        nav button:not(.active):hover { background-color: #6366f1; /* Tailwind indigo-500 */ color: white; }
+        nav button.active { background-color: tailwind.theme.colors['theme-dark']; color: white; }
+        nav button:not(.active):hover { background-color: tailwind.theme.colors['theme-medium']; color: white; }
         
         .custom-scrollbar::-webkit-scrollbar { width: 8px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #555; }
 
-        input[type="text"], input[type="number"], input[type="email"], input[type="password"], textarea, select {
-            @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm;
+        input[type="text"], input[type="number"], textarea, select {
+            @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm;
         }
         label {
             @apply block text-sm font-medium text-gray-700 mb-1;
@@ -59,29 +65,29 @@
 
     <div id="appLoader" class="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
         <div class="text-center">
-            <svg class="animate-spin h-12 w-12 text-indigo-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <svg class="animate-spin h-12 w-12 text-theme-dark mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <p class="mt-2 text-lg font-semibold text-indigo-600">Loading Recipes...</p>
+            <p class="mt-2 text-lg font-semibold text-theme-dark">Loading Recipes from Google Sheets...</p>
         </div>
     </div>
 
-    <nav class="bg-indigo-700 shadow-md sticky top-0 z-40">
+    <nav class="bg-theme-dark shadow-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center">
-                    <span class="font-bold text-xl text-white">Recipe Keeper (Flat CSV)</span>
+                    <span class="font-bold text-xl text-white">My Recipes Scheduler</span>
                 </div>
                 <div class="hidden md:block">
                     <div class="ml-10 flex items-baseline space-x-4">
-                        <button data-page="recipesPage" class="nav-button px-3 py-2 rounded-md text-sm font-medium text-indigo-200 hover:text-white hover:bg-indigo-600">Recipes</button>
-                        <button data-page="weekMenuPage" class="nav-button px-3 py-2 rounded-md text-sm font-medium text-indigo-200 hover:text-white hover:bg-indigo-600">Week Menu</button>
-                        <button data-page="groceriesPage" class="nav-button px-3 py-2 rounded-md text-sm font-medium text-indigo-200 hover:text-white hover:bg-indigo-600">Groceries</button>
+                        <button data-page="recipesPage" class="nav-button px-3 py-2 rounded-md text-sm font-medium text-theme-text-on-dark hover:text-white hover:bg-theme-medium">Recipes</button>
+                        <button data-page="weekMenuPage" class="nav-button px-3 py-2 rounded-md text-sm font-medium text-theme-text-on-dark hover:text-white hover:bg-theme-medium">Week Menu</button>
+                        <button data-page="groceriesPage" class="nav-button px-3 py-2 rounded-md text-sm font-medium text-theme-text-on-dark hover:text-white hover:bg-theme-medium">Groceries</button>
                     </div>
                 </div>
                 <div class="-mr-2 flex md:hidden">
-                    <button type="button" id="mobileMenuButton" class="bg-indigo-700 inline-flex items-center justify-center p-2 rounded-md text-indigo-200 hover:text-white hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-indigo-700 focus:ring-white" aria-controls="mobile-menu" aria-expanded="false">
+                    <button type="button" id="mobileMenuButton" class="bg-theme-dark inline-flex items-center justify-center p-2 rounded-md text-theme-text-on-dark hover:text-white hover:bg-theme-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-theme-dark focus:ring-white" aria-controls="mobile-menu" aria-expanded="false">
                         <span class="sr-only">Open main menu</span>
                         <svg class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
                         <svg class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -91,9 +97,9 @@
         </div>
         <div class="md:hidden" id="mobile-menu" style="display: none;">
             <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-                <button data-page="recipesPage" class="nav-button mobile-nav-button block px-3 py-2 rounded-md text-base font-medium text-indigo-200 hover:text-white hover:bg-indigo-600 w-full text-left">Recipes</button>
-                <button data-page="weekMenuPage" class="nav-button mobile-nav-button block px-3 py-2 rounded-md text-base font-medium text-indigo-200 hover:text-white hover:bg-indigo-600 w-full text-left">Week Menu</button>
-                <button data-page="groceriesPage" class="nav-button mobile-nav-button block px-3 py-2 rounded-md text-base font-medium text-indigo-200 hover:text-white hover:bg-indigo-600 w-full text-left">Groceries</button>
+                <button data-page="recipesPage" class="nav-button mobile-nav-button block px-3 py-2 rounded-md text-base font-medium text-theme-text-on-dark hover:text-white hover:bg-theme-medium w-full text-left">Recipes</button>
+                <button data-page="weekMenuPage" class="nav-button mobile-nav-button block px-3 py-2 rounded-md text-base font-medium text-theme-text-on-dark hover:text-white hover:bg-theme-medium w-full text-left">Week Menu</button>
+                <button data-page="groceriesPage" class="nav-button mobile-nav-button block px-3 py-2 rounded-md text-base font-medium text-theme-text-on-dark hover:text-white hover:bg-theme-medium w-full text-left">Groceries</button>
             </div>
         </div>
     </nav>
@@ -101,11 +107,6 @@
     <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div id="recipesPage" class="page p-4 space-y-6">
             <h2 class="text-3xl font-bold text-gray-900">My Recipes</h2>
-            <div class="mb-4 p-4 bg-blue-100 border border-blue-300 text-blue-700 rounded-md">
-                <p class="text-sm">Recipes are loaded from a CSV file. To add or edit recipes, please modify the source CSV file directly.</p>
-                <p class="text-sm mt-1">Attempting to load CSV from: <code id="csvUrlDisplay" class="text-xs bg-blue-200 p-1 rounded break-all"></code></p>
-                 <p class="text-xs mt-1 text-red-600 font-semibold">If recipes don't load, ensure the URL above is correct and the CSV file is publicly accessible and follows the specified wide format.</p>
-            </div>
             <div id="recipeListContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 custom-scrollbar">
                 </div>
         </div>
@@ -115,7 +116,7 @@
                 <h2 class="text-3xl font-bold text-gray-900">Week Menu</h2>
                 <div class="mt-4 sm:mt-0">
                     <label for="numDays" class="mr-2">Number of Days:</label>
-                    <select id="numDays" class="p-2 border rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    <select id="numDays" class="p-2 border rounded-md shadow-sm focus:ring-green-500 focus:border-green-500">
                         <option value="1">1</option> <option value="2">2</option> <option value="3">3</option>
                         <option value="4">4</option> <option value="5" selected>5</option> <option value="6">6</option>
                         <option value="7">7</option>
@@ -124,7 +125,7 @@
             </div>
             <div id="weekMenuDaysContainer" class="space-y-8">
                 </div>
-             <button id="generateGroceriesFromMenuBtn" class="mt-6 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-md shadow focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">Update & View Groceries List</button>
+             <button id="generateGroceriesFromMenuBtn" class="mt-6 w-full bg-theme-medium hover:bg-theme-dark text-white font-bold py-3 px-4 rounded-md shadow focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">Update & View Groceries List</button>
         </div>
 
         <div id="groceriesPage" class="page p-4">
@@ -138,10 +139,8 @@
 
     <script type="module">
         // --- CONFIGURATION ---
-        const RECIPE_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSdPSiY37PZmzEUFdPqOWqU7c_8TdK0CXdgIcnxYT08KlYcZzJ3nuhLbBxdfTgZwAGu4mGXoJrgQecp/pub?gid=0&single=true&output=csv';
-        const WEEK_MENU_LOCALSTORAGE_KEY = 'recipeAppWeekMenu_flat_csv';
-        const MAX_INGREDIENTS = 15; // Max number of ingredient blocks in CSV
-        const MAX_PROCEDURE_STEPS = 20; // Max number of procedure steps in CSV
+        const APPS_SCRIPT_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbx0--EwhuWI_KUG7HF3lSuEvA_1mY9Z3eEspYJVvyYHMZPgV743i8qAJcUiwpGnTMn5wQ/exec';
+        const WEEK_MENU_LOCALSTORAGE_KEY = 'recipeAppWeekMenu_google_sheets_v1';
 
         // --- GLOBAL STATE ---
         let recipes = []; 
@@ -150,15 +149,14 @@
         const mealTypes = ["breakfast", "lunch", "dinner"];
         
         async function initializeAppState() {
-            document.getElementById('csvUrlDisplay').textContent = RECIPE_CSV_URL;
-            if (RECIPE_CSV_URL === 'YOUR_CSV_FILE_URL_HERE') { // Redundant check now, but good practice
-                showMessage("Configuration needed: Please update RECIPE_CSV_URL in the HTML file.", "error", 10000);
+            if (APPS_SCRIPT_WEB_APP_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE') { 
+                showMessage("Configuration error: APPS_SCRIPT_WEB_APP_URL is still a placeholder.", "error", 15000);
                 document.getElementById('appLoader').style.display = 'none'; 
                 showPage('recipesPage'); 
                 renderRecipeList(); 
                 return;
             }
-            await loadRecipesFromCSV();
+            await loadRecipesFromGoogleSheet();
             loadWeekMenuFromLocalStorage();
             
             setupNumDaysListener();
@@ -201,11 +199,11 @@
             if (activePage) activePage.classList.add('active');
 
             navButtons.forEach(btn => {
-                btn.classList.remove('active', 'bg-indigo-600', 'text-white');
-                btn.classList.add('text-indigo-200', 'hover:text-white', 'hover:bg-indigo-600');
+                btn.classList.remove('active', 'bg-theme-dark', 'text-white');
+                btn.classList.add('text-theme-text-on-dark', 'hover:text-white', 'hover:bg-theme-medium');
                 if (btn.dataset.page === pageId) {
-                    btn.classList.add('active', 'bg-indigo-600', 'text-white');
-                    btn.classList.remove('text-indigo-200');
+                    btn.classList.add('active', 'bg-theme-dark', 'text-white');
+                    btn.classList.remove('text-theme-text-on-dark');
                 }
             });
             if (pageId === 'recipesPage') renderRecipeList();
@@ -231,86 +229,6 @@
                 messageBar.style.display = 'none';
             }, duration);
         }
-
-        // --- CSV PARSING ---
-        function parseCSV(csvText) {
-            const lines = csvText.trim().split(/\r\n|\n/); // Handle both CRLF and LF line endings
-            if (lines.length < 2) {
-                console.warn("CSV has no data rows or only a header.");
-                return []; 
-            }
-
-            const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '')); // Trim and remove quotes from headers
-            const dataRows = lines.slice(1);
-            
-            const parsedRecipes = [];
-
-            dataRows.forEach((line, lineIndex) => {
-                if (line.trim() === '') return; // Skip empty lines
-
-                // Basic CSV splitting. This won't handle commas inside quoted fields perfectly.
-                // For more robust CSV parsing, a library would be better.
-                const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
-                
-                if (values.length < headers.length) {
-                    console.warn(`Skipping CSV row ${lineIndex + 2}: not enough columns. Expected ${headers.length}, got ${values.length}. Line: "${line}"`);
-                    return;
-                }
-
-                const rowObject = {};
-                headers.forEach((header, index) => {
-                    rowObject[header] = values[index] || '';
-                });
-
-                if (!rowObject.recipeId || !rowObject.name) {
-                    console.warn(`Skipping CSV row ${lineIndex + 2} due to missing recipeId or name:`, rowObject);
-                    return; 
-                }
-
-                const recipe = {
-                    recipeId: rowObject.recipeId,
-                    name: rowObject.name,
-                    defaultServings: parseInt(rowObject.defaultServings) || 1,
-                    personalScore: rowObject.personalScore ? parseInt(rowObject.personalScore) : null,
-                    ingredients: [],
-                    procedure: []
-                };
-
-                for (let i = 1; i <= MAX_INGREDIENTS; i++) {
-                    const ingName = rowObject[`ingredient${i}_name`];
-                    if (ingName && ingName.trim() !== '') {
-                        recipe.ingredients.push({
-                            name: ingName,
-                            quantity: parseFloat(rowObject[`ingredient${i}_quantity`]) || 0,
-                            unit: rowObject[`ingredient${i}_unit`] || 'g',
-                            calories_per_100: parseFloat(rowObject[`ingredient${i}_calories_per_100`]) || 0,
-                            fat_per_100: parseFloat(rowObject[`ingredient${i}_fat_per_100`]) || 0,
-                            saturatedFat_per_100: parseFloat(rowObject[`ingredient${i}_saturatedFat_per_100`]) || 0,
-                            carbs_per_100: parseFloat(rowObject[`ingredient${i}_carbs_per_100`]) || 0,
-                            sugars_per_100: parseFloat(rowObject[`ingredient${i}_sugars_per_100`]) || 0,
-                            protein_per_100: parseFloat(rowObject[`ingredient${i}_protein_per_100`]) || 0,
-                            salt_per_100: parseFloat(rowObject[`ingredient${i}_salt_per_100`]) || 0,
-                        });
-                    } else {
-                        // If ingredient name is blank, assume no more ingredients for this recipe in this row
-                        break; 
-                    }
-                }
-
-                for (let i = 1; i <= MAX_PROCEDURE_STEPS; i++) {
-                    const step = rowObject[`procedureStep${i}`];
-                    if (step && step.trim() !== '') {
-                        recipe.procedure.push(step);
-                    } else {
-                        // If step is blank, assume no more steps for this recipe in this row
-                        break;
-                    }
-                }
-                parsedRecipes.push(recipe);
-            });
-            return parsedRecipes;
-        }
-
 
         // --- RECIPE CALCULATIONS ---
         function convertToGramsOrMl(quantity, unit) {
@@ -346,26 +264,38 @@
         }
 
         // --- RECIPES PAGE ---
-        async function loadRecipesFromCSV() {
+        async function loadRecipesFromGoogleSheet() {
             document.getElementById('appLoader').style.display = 'flex';
             try {
-                const response = await fetch(RECIPE_CSV_URL);
+                const response = await fetch(APPS_SCRIPT_WEB_APP_URL);
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status} while fetching ${RECIPE_CSV_URL}`);
+                    let errorText = `HTTP error! status: ${response.status} fetching from Apps Script URL.`;
+                    try {
+                        const scriptError = await response.text(); 
+                        if (scriptError.toLowerCase().includes("script function not found") || scriptError.toLowerCase().includes("authorization is required")) {
+                           errorText += " Check deployment settings (ensure 'doGet' is the function and access is 'Anyone'). Re-authorize if needed.";
+                        } else if (scriptError.length < 200) { 
+                           errorText += ` Script error: ${scriptError}`;
+                        }
+                    } catch (e) { /* ignore */ }
+                    throw new Error(errorText + " Ensure it's deployed correctly and accessible by 'Anyone'.");
                 }
-                const csvText = await response.text();
-                recipes = parseCSV(csvText);
-                console.log("Recipes loaded from CSV:", recipes);
-                if (recipes.length > 0) {
-                    showMessage("Recipes loaded successfully!", "success");
-                } else if (csvText.trim() !== '' && csvText.trim().split('\n').length >=1 ) { 
-                     showMessage("Recipes loaded, but no valid recipe data found. Check CSV content and header.", "error", 7000);
+                const data = await response.json(); 
+                if (Array.isArray(data)) {
+                    recipes = data;
+                    console.log("Recipes loaded from Google Sheets via Apps Script:", recipes);
+                    if (recipes.length > 0) {
+                        showMessage("Recipes loaded successfully!", "success");
+                    } else {
+                        showMessage("Data loaded, but no recipes found. Check your Google Sheet content and Apps Script logic (View Logs in Apps Script editor).", "error", 10000);
+                    }
                 } else {
-                     showMessage("CSV file might be empty or not formatted correctly.", "error", 7000);
+                    console.error("Invalid data format received from Apps Script:", data);
+                    throw new Error("Invalid data format received from Apps Script. Expected an array of recipes. Check Apps Script logs.");
                 }
             } catch (error) {
-                console.error("Error loading recipes from CSV: ", error);
-                showMessage(`Error loading recipes: ${error.message}. Check CSV URL and format.`, "error", 7000);
+                console.error("Error loading recipes from Google Sheets: ", error);
+                showMessage(`Error loading recipes: ${error.message}. Check Apps Script URL, deployment, sheet structure, and Apps Script logs.`, "error", 15000);
                 recipes = []; 
             } finally {
                 renderRecipeList(); 
@@ -380,12 +310,12 @@
             if (!container) return;
             container.innerHTML = '';
             
-            if (RECIPE_CSV_URL === 'YOUR_CSV_FILE_URL_HERE') {
-                 container.innerHTML = '<p class="col-span-full text-center text-red-600 font-semibold py-8">ERROR: Please configure the RECIPE_CSV_URL in the HTML file first!</p>';
+            if (APPS_SCRIPT_WEB_APP_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE') {
+                 container.innerHTML = '<p class="col-span-full text-center text-red-600 font-semibold py-8">ERROR: Please configure the APPS_SCRIPT_WEB_APP_URL in the HTML file first!</p>';
                  return;
             }
             if (recipes.length === 0) {
-                container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">No recipes found. Check your CSV file, the URL, or ensure it\'s publicly accessible and correctly formatted.</p>';
+                container.innerHTML = '<p class="col-span-full text-center text-gray-500 py-8">No recipes found. Check your Google Sheet, Apps Script deployment, or wait for data to load. You can also check the Apps Script logs for errors.</p>';
                 return;
             }
             recipes.forEach(recipe => {
@@ -395,17 +325,14 @@
                 const nutrition = calculateRecipeNutritionPerServing(recipe);
 
                 const ingredientsList = (recipe.ingredients && recipe.ingredients.length > 0)
-                    ? recipe.ingredients.map(ing => {
-                        let details = `${ing.name || 'Unnamed Ingredient'}: ${ing.quantity || '?'} ${ing.unit || ''}`;
-                        return `<li>${details}</li>`;
-                      }).join('')
+                    ? recipe.ingredients.map(ing => `<li>${ing.name || 'Unnamed Ing.'}: ${ing.quantity || '?'} ${ing.unit || ''}</li>`).join('')
                     : '<li>No ingredients listed.</li>';
                 const procedureList = (recipe.procedure && recipe.procedure.length > 0)
                     ? recipe.procedure.map(step => `<li>${step || 'No description'}</li>`).join('')
                     : '<li>No procedure steps listed.</li>';
 
                 let totalRecipeNutrition = { calories: 0, fat: 0, saturatedFat: 0, carbs: 0, sugars: 0, protein: 0, salt: 0 };
-                if (recipe.ingredients && recipe.defaultServings > 0) {
+                 if (recipe.ingredients && recipe.defaultServings > 0) {
                     recipe.ingredients.forEach(ing => {
                         const ingredientQuantityInRecipe = convertToGramsOrMl(ing.quantity, ing.unit);
                         totalRecipeNutrition.calories += (parseFloat(ing.calories_per_100) / 100) * ingredientQuantityInRecipe || 0;
@@ -419,7 +346,7 @@
                 }
 
                 div.innerHTML = `
-                    <h3 class="text-xl font-semibold text-indigo-700 mb-2">${recipe.name || 'Unnamed Recipe'}</h3>
+                    <h3 class="text-xl font-semibold text-theme-dark mb-2">${recipe.name || 'Unnamed Recipe'}</h3>
                     <p class="text-sm text-gray-600"><strong>Serves:</strong> ${recipe.defaultServings || 'N/A'}</p>
                     <p class="text-sm text-gray-600"><strong>Calories:</strong> ${nutrition.calories.toFixed(0)} kcal/serving</p>
                     <p class="text-sm text-gray-600"><strong>Fat:</strong> ${nutrition.fat.toFixed(1)} g/serving (Sat: ${nutrition.saturatedFat.toFixed(1)}g)</p>
@@ -429,7 +356,7 @@
                     ${recipe.personalScore ? `<p class="text-sm text-gray-600"><strong>Personal Score:</strong> ${recipe.personalScore}/10</p>` : ''}
                     
                     <details class="mt-3 text-sm">
-                        <summary class="font-medium text-indigo-600 cursor-pointer">Ingredients & Full Recipe Nutrition</summary>
+                        <summary class="font-medium text-theme-dark cursor-pointer">Ingredients & Full Recipe Nutrition</summary>
                         <ul class="list-disc list-inside mt-1 text-gray-700">
                             ${ingredientsList}
                         </ul>
@@ -443,7 +370,7 @@
                         </div>
                     </details>
                     <details class="mt-2 text-sm">
-                        <summary class="font-medium text-indigo-600 cursor-pointer">Procedure</summary>
+                        <summary class="font-medium text-theme-dark cursor-pointer">Procedure</summary>
                         <ol class="list-decimal list-inside mt-1 text-gray-700 space-y-1">
                             ${procedureList}
                         </ol>
@@ -489,7 +416,7 @@
             if (!weekMenuDaysContainer) return;
             
             if (recipes.length === 0 && Object.keys(weekMenu.days).length === 0) {
-                weekMenuDaysContainer.innerHTML = `<p class="text-center text-gray-500 py-4">Load some recipes from CSV first to plan your week!</p>`;
+                weekMenuDaysContainer.innerHTML = `<p class="text-center text-gray-500 py-4">Load some recipes first to plan your week!</p>`;
                 return;
             }
             
@@ -529,7 +456,7 @@
                 });
                 
                 dayElement.innerHTML = `
-                    <h3 class="text-xl font-semibold text-indigo-700">${dayNames[i]} 
+                    <h3 class="text-xl font-semibold text-theme-dark">${dayNames[i]} 
                         <span id="${dayId}_total_calories" class="text-base font-normal text-gray-600">(Total: ${dailyTotalCalories.toFixed(0)} kcal)</span>
                     </h3>
                     ${mealSlotsHTML}
