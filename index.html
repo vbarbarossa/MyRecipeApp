@@ -138,15 +138,10 @@
 
     <script type="module">
         // --- CONFIGURATION ---
-        // ###################################################################################
-        // #    !!!!!!!!!!   IMPORTANT: REPLACE THE URL BELOW   !!!!!!!!!!                   #
-        // #  You MUST replace 'YOUR_CSV_FILE_URL_HERE' with the ACTUAL RAW link to your     #
-        // #  recipes.csv file hosted on GitHub (or another public web host).                #
-        // ###################################################################################
         const RECIPE_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSdPSiY37PZmzEUFdPqOWqU7c_8TdK0CXdgIcnxYT08KlYcZzJ3nuhLbBxdfTgZwAGu4mGXoJrgQecp/pub?gid=0&single=true&output=csv';
         const WEEK_MENU_LOCALSTORAGE_KEY = 'recipeAppWeekMenu_flat_csv';
-        const MAX_INGREDIENTS = 15;
-        const MAX_PROCEDURE_STEPS = 20;
+        const MAX_INGREDIENTS = 15; // Max number of ingredient blocks in CSV
+        const MAX_PROCEDURE_STEPS = 20; // Max number of procedure steps in CSV
 
         // --- GLOBAL STATE ---
         let recipes = []; 
@@ -156,7 +151,7 @@
         
         async function initializeAppState() {
             document.getElementById('csvUrlDisplay').textContent = RECIPE_CSV_URL;
-            if (RECIPE_CSV_URL === 'YOUR_CSV_FILE_URL_HERE') {
+            if (RECIPE_CSV_URL === 'YOUR_CSV_FILE_URL_HERE') { // Redundant check now, but good practice
                 showMessage("Configuration needed: Please update RECIPE_CSV_URL in the HTML file.", "error", 10000);
                 document.getElementById('appLoader').style.display = 'none'; 
                 showPage('recipesPage'); 
@@ -239,27 +234,37 @@
 
         // --- CSV PARSING ---
         function parseCSV(csvText) {
-            const lines = csvText.trim().split('\n');
-            if (lines.length < 2) return []; 
+            const lines = csvText.trim().split(/\r\n|\n/); // Handle both CRLF and LF line endings
+            if (lines.length < 2) {
+                console.warn("CSV has no data rows or only a header.");
+                return []; 
+            }
 
-            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+            const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '')); // Trim and remove quotes from headers
             const dataRows = lines.slice(1);
             
             const parsedRecipes = [];
 
-            dataRows.forEach(line => {
-                // Simplified CSV line splitting - assumes no commas within quoted fields for now.
-                // For robust CSV, a proper library or more complex regex is needed.
+            dataRows.forEach((line, lineIndex) => {
+                if (line.trim() === '') return; // Skip empty lines
+
+                // Basic CSV splitting. This won't handle commas inside quoted fields perfectly.
+                // For more robust CSV parsing, a library would be better.
                 const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
                 
+                if (values.length < headers.length) {
+                    console.warn(`Skipping CSV row ${lineIndex + 2}: not enough columns. Expected ${headers.length}, got ${values.length}. Line: "${line}"`);
+                    return;
+                }
+
                 const rowObject = {};
                 headers.forEach((header, index) => {
                     rowObject[header] = values[index] || '';
                 });
 
                 if (!rowObject.recipeId || !rowObject.name) {
-                    console.warn("Skipping CSV row due to missing recipeId or name:", line);
-                    return; // Skip this row if essential data is missing
+                    console.warn(`Skipping CSV row ${lineIndex + 2} due to missing recipeId or name:`, rowObject);
+                    return; 
                 }
 
                 const recipe = {
@@ -271,7 +276,6 @@
                     procedure: []
                 };
 
-                // Populate ingredients
                 for (let i = 1; i <= MAX_INGREDIENTS; i++) {
                     const ingName = rowObject[`ingredient${i}_name`];
                     if (ingName && ingName.trim() !== '') {
@@ -287,14 +291,19 @@
                             protein_per_100: parseFloat(rowObject[`ingredient${i}_protein_per_100`]) || 0,
                             salt_per_100: parseFloat(rowObject[`ingredient${i}_salt_per_100`]) || 0,
                         });
+                    } else {
+                        // If ingredient name is blank, assume no more ingredients for this recipe in this row
+                        break; 
                     }
                 }
 
-                // Populate procedure steps
                 for (let i = 1; i <= MAX_PROCEDURE_STEPS; i++) {
                     const step = rowObject[`procedureStep${i}`];
                     if (step && step.trim() !== '') {
                         recipe.procedure.push(step);
+                    } else {
+                        // If step is blank, assume no more steps for this recipe in this row
+                        break;
                     }
                 }
                 parsedRecipes.push(recipe);
