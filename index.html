@@ -17,6 +17,9 @@
                         'theme-medium': '#059669', // Example: emerald-600
                         'theme-light': '#6ee7b7', // Example: emerald-300
                         'theme-text-on-dark': '#d1fae5', // Example: emerald-100
+                        'star-filled': '#FACC15', // Tailwind yellow-400
+                        'star-empty': '#E5E7EB',  // Tailwind gray-200
+                        'star-stroke': '#A0A0A0', // Neutral gray for empty/partial star outlines
                     }
                 }
             }
@@ -59,6 +62,16 @@
         }
         #messageBar.success { background-color: #28a745; }
         #messageBar.error { background-color: #dc3545; }
+        .star-rating-container {
+            display: flex;
+            align-items: center;
+            margin-top: 4px; 
+        }
+        .star-rating-container svg {
+            width: 1.25rem; 
+            height: 1.25rem;
+            margin-right: 2px;
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -263,6 +276,71 @@
             return totals;
         }
 
+        // --- STAR RATING RENDERING ---
+        function renderStarRating(personalScore, recipeIdForGradient) {
+            if (personalScore === null || personalScore === undefined || personalScore < 1 || personalScore > 10) {
+                return '<div class="star-rating-container text-sm text-gray-400">No rating</div>';
+            }
+
+            const fiveStarScore = personalScore / 2; 
+            let starsHTML = '<div class="star-rating-container" aria-label="Rating: ' + fiveStarScore.toFixed(1) + ' out of 5 stars">';
+            
+            const starFilledHex = '#FACC15'; 
+            const starEmptyHex = '#E5E7EB';   
+            const starStrokeHex = '#A0A0A0';  
+
+            for (let i = 1; i <= 5; i++) {
+                let fillPercentage = 0;
+                if (i <= fiveStarScore) {
+                    fillPercentage = 100; 
+                } else if (i - 1 < fiveStarScore && i > fiveStarScore) {
+                    const decimalPart = fiveStarScore - (i - 1);
+                    if (decimalPart >= 0.875) fillPercentage = 100; 
+                    else if (decimalPart >= 0.625) fillPercentage = 75; 
+                    else if (decimalPart >= 0.375) fillPercentage = 50; 
+                    else if (decimalPart >= 0.125) fillPercentage = 25; 
+                    else fillPercentage = 0; 
+                } else {
+                    fillPercentage = 0; 
+                }
+
+                // Sanitize recipeIdForGradient for use in ID
+                const cleanRecipeId = (recipeIdForGradient || 'star').replace(/[^a-zA-Z0-9-_]/g, '');
+                const uniqueGradId = `grad-${cleanRecipeId}-${i}-${Math.random().toString(36).substring(2,7)}`;
+
+                if (fillPercentage === 100) {
+                    starsHTML += `
+                        <svg viewBox="0 0 24 24" stroke-width="0.5" stroke="${starFilledHex}">
+                            <path fill="${starFilledHex}" d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279-7.416-3.967-7.417 3.967 1.481-8.279-6.064-5.828 8.332-1.151z"/>
+                        </svg>
+                    `;
+                } else if (fillPercentage === 0) {
+                    starsHTML += `
+                        <svg viewBox="0 0 24 24" stroke-width="0.5" stroke="${starStrokeHex}">
+                            <path fill="${starEmptyHex}" d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279-7.416-3.967-7.417 3.967 1.481-8.279-6.064-5.828 8.332-1.151z"/>
+                        </svg>
+                    `;
+                } else { // Partial fill
+                    starsHTML += `
+                        <svg viewBox="0 0 24 24" stroke="${starStrokeHex}" stroke-width="0.5">
+                            <defs>
+                                <linearGradient id="${uniqueGradId}" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stop-color="${starFilledHex}" />
+                                    <stop offset="${fillPercentage}%" stop-color="${starFilledHex}" />
+                                    <stop offset="${fillPercentage}%" stop-color="${starEmptyHex}" />
+                                    <stop offset="100%" stop-color="${starEmptyHex}" />
+                                </linearGradient>
+                            </defs>
+                            <path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279-7.416-3.967-7.417 3.967 1.481-8.279-6.064-5.828 8.332-1.151z" fill="url(#${uniqueGradId})"/>
+                        </svg>
+                    `;
+                }
+            }
+            starsHTML += '</div>';
+            return starsHTML;
+        }
+
+
         // --- RECIPES PAGE ---
         async function loadRecipesFromGoogleSheet() {
             document.getElementById('appLoader').style.display = 'flex';
@@ -323,6 +401,9 @@
                 div.className = 'bg-white shadow-lg rounded-lg p-6 hover:shadow-xl transition-shadow duration-300';
                 
                 const nutrition = calculateRecipeNutritionPerServing(recipe);
+                // Pass recipe.recipeId to renderStarRating for unique gradient IDs
+                const starRatingHTML = recipe.personalScore ? renderStarRating(recipe.personalScore, recipe.recipeId) : '<div class="star-rating-container text-sm text-gray-400">No rating</div>';
+
 
                 const ingredientsList = (recipe.ingredients && recipe.ingredients.length > 0)
                     ? recipe.ingredients.map(ing => `<li>${ing.name || 'Unnamed Ing.'}: ${ing.quantity || '?'} ${ing.unit || ''}</li>`).join('')
@@ -346,14 +427,14 @@
                 }
 
                 div.innerHTML = `
-                    <h3 class="text-xl font-semibold text-theme-dark mb-2">${recipe.name || 'Unnamed Recipe'}</h3>
-                    <p class="text-sm text-gray-600"><strong>Serves:</strong> ${recipe.defaultServings || 'N/A'}</p>
+                    <h3 class="text-xl font-semibold text-theme-dark mb-1">${recipe.name || 'Unnamed Recipe'}</h3>
+                    ${starRatingHTML}
+                    <p class="text-sm text-gray-600 mt-2"><strong>Serves:</strong> ${recipe.defaultServings || 'N/A'}</p>
                     <p class="text-sm text-gray-600"><strong>Calories:</strong> ${nutrition.calories.toFixed(0)} kcal/serving</p>
                     <p class="text-sm text-gray-600"><strong>Fat:</strong> ${nutrition.fat.toFixed(1)} g/serving (Sat: ${nutrition.saturatedFat.toFixed(1)}g)</p>
                     <p class="text-sm text-gray-600"><strong>Carbs:</strong> ${nutrition.carbs.toFixed(1)} g/serving (Sugars: ${nutrition.sugars.toFixed(1)}g)</p>
                     <p class="text-sm text-gray-600"><strong>Protein:</strong> ${nutrition.protein.toFixed(1)} g/serving</p>
                     <p class="text-sm text-gray-600"><strong>Salt:</strong> ${nutrition.salt.toFixed(2)} g/serving</p>
-                    ${recipe.personalScore ? `<p class="text-sm text-gray-600"><strong>Personal Score:</strong> ${recipe.personalScore}/10</p>` : ''}
                     
                     <details class="mt-3 text-sm">
                         <summary class="font-medium text-theme-dark cursor-pointer">Ingredients & Full Recipe Nutrition</summary>
